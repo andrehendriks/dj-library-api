@@ -61,7 +61,8 @@
             const response = await fetch(this.apiBase + '/api/v1/tracks?' + query);
             const body = await response.json().catch(() => null);
             if (!response.ok) {
-              const message = body?.error?.message || body?.message || `Track request failed (HTTP ${response.status})`;
+              const details = Array.isArray(body?.error?.details) ? `: ${body.error.details.map(detail => detail.message).join(', ')}` : '';
+              const message = (body?.error?.message || body?.message || `Track request failed (HTTP ${response.status})`) + details;
               throw new Error(message);
             }
             const tracks = Array.isArray(body)
@@ -86,7 +87,7 @@
           try {
             const response = await fetch(this.apiBase + '/api/v1/autodj/playlist?' + query);
             const body = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(body.error?.message || 'Could not generate playlist');
+            if (!response.ok) throw new Error(body.error?.message || body.message || 'Could not generate playlist');
             this.playlist = Array.isArray(body.data) ? body.data : [];
             if (!Array.isArray(body.data)) this.error = 'The API returned an unexpected playlist response.';
           } catch (error) { this.playlist = []; this.error = error instanceof Error ? error.message : 'Could not generate playlist'; }

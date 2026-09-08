@@ -29,6 +29,8 @@ const trackProperties = {
   updatedAt: { type: "string", format: "date-time" }
 };
 
+const flexibleQuerySchema = { type: "object", additionalProperties: true };
+
 export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
   app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, _body, done) => {
@@ -130,14 +132,14 @@ export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInst
   app.get("/api/v1/autodj/playlist", {
     schema: {
       tags: ["autodj"],
-      querystring: { type: "object", properties: { bpm: { type: "number" }, key: { type: "string" }, genre: { type: "string" }, minDurationSeconds: { type: "integer" }, maxDurationSeconds: { type: "integer" }, limit: { type: "integer", default: 25 } } }
+      querystring: flexibleQuerySchema
     }
   }, async (request, reply) => reply.send(toAutoDjResponse(await autoDjHandler(request))));
 
   app.get("/api/v1/autodj/playlist.m3u8", {
     schema: {
       tags: ["autodj"],
-      querystring: { type: "object", properties: { bpm: { type: "number" }, key: { type: "string" }, genre: { type: "string" }, minDurationSeconds: { type: "integer" }, maxDurationSeconds: { type: "integer" }, limit: { type: "integer", default: 25 } } }
+      querystring: flexibleQuerySchema
     }
   }, async (request, reply) => {
     const prefix = process.env.MUSIC_PATH_PREFIX ?? "/music/";
@@ -151,7 +153,7 @@ export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInst
   app.get("/api/v1/tracks", {
     schema: {
       tags: ["tracks"],
-      querystring: { type: "object", properties: { search: { type: "string" }, genre: { type: "string" }, artist: { type: "string" }, minBpm: { type: "number" }, maxBpm: { type: "number" }, minRating: { type: "integer" }, page: { type: "integer", default: 1 }, pageSize: { type: "integer", default: 20 }, sortBy: { type: "string" }, sortOrder: { type: "string", enum: ["asc", "desc"] } } },
+      querystring: flexibleQuerySchema,
       response: { 200: { type: "object" } }
     }
   }, async (request, reply) => {
