@@ -61,9 +61,12 @@
             const response = await fetch(this.apiBase + '/api/v1/tracks?' + query);
             const body = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(body.error?.message || 'Could not load tracks');
-            this.tracks = Array.isArray(body.data) ? body.data : [];
-            this.total = Number.isFinite(body.pagination?.total) ? body.pagination.total : this.tracks.length;
-            if (!Array.isArray(body.data) || !body.pagination) this.error = 'The API returned an unexpected track-list response.';
+            const tracks = Array.isArray(body) ? body : body.data ?? body.tracks;
+            if (!Array.isArray(tracks)) throw new Error('The API returned an unexpected track-list response.');
+            this.tracks = tracks;
+            this.total = Number.isFinite(body.pagination?.total)
+              ? body.pagination.total
+              : Number.isFinite(body.total) ? body.total : tracks.length;
           } catch (error) {
             this.tracks = []; this.total = 0; this.error = error instanceof Error ? error.message : 'Could not load tracks';
           } finally { this.loading = false; }
