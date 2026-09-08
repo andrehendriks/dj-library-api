@@ -30,6 +30,23 @@ const trackProperties = {
 };
 
 const flexibleQuerySchema = { type: "object", additionalProperties: true };
+const trackListResponseSchema = {
+  type: "object",
+  required: ["data", "pagination"],
+  properties: {
+    data: { type: "array", items: { type: "object", additionalProperties: true } },
+    pagination: {
+      type: "object",
+      required: ["page", "pageSize", "total", "totalPages"],
+      properties: {
+        page: { type: "integer" },
+        pageSize: { type: "integer" },
+        total: { type: "integer" },
+        totalPages: { type: "integer" }
+      }
+    }
+  }
+};
 
 export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
@@ -154,7 +171,7 @@ export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInst
     schema: {
       tags: ["tracks"],
       querystring: flexibleQuerySchema,
-      response: { 200: { type: "object" } }
+      response: { 200: trackListResponseSchema }
     }
   }, async (request, reply) => {
     const query = trackQuerySchema.parse(request.query);
