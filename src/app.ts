@@ -175,7 +175,14 @@ export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInst
     }
   }, async (request, reply) => {
     const query = trackQuerySchema.parse(request.query);
-    const search = query.search ? [{ title: { contains: query.search } }, { artist: { contains: query.search } }, { album: { contains: query.search } }, { genre: { contains: query.search } }, { tags: { contains: query.search } }] : undefined;
+    const search = query.search ? [
+      { title: { contains: query.search } },
+      { artist: { contains: query.search } },
+      { album: { contains: query.search } },
+      { genre: { contains: query.search } },
+      { tags: { contains: query.search } },
+      { filePath: { contains: query.search } }
+    ] : undefined;
     const where: Prisma.TrackWhereInput = {
       ...(search ? { OR: search } : {}),
       ...(query.genre ? { genre: { contains: query.genre } } : {}),

@@ -15,8 +15,8 @@
       <div><p class="eyebrow">LOCAL MUSIC LIBRARY</p><h1>DJ Library</h1><p class="muted">Browse your collection and generate a predictable AutoDJ playlist.</p></div>
     </header>
     <section class="panel controls">
-      <label>Search <input x-model="filters.search" @input.debounce.300ms="load()" placeholder="Title, artist or genre"></label>
-      <label>Genre <input x-model="filters.genre" @input.debounce.300ms="load()" placeholder="House"></label>
+      <label>Search <input x-model="filters.search" @input.debounce.300ms="load(true)" placeholder="Title, artist, path or genre"></label>
+      <label>Genre <input x-model="filters.genre" @input.debounce.300ms="load(true)" placeholder="House"></label>
       <label>Page size <input type="number" min="1" max="100" x-model.number="filters.pageSize" @change="load()"></label>
     </section>
     <section class="layout">
@@ -53,9 +53,10 @@
         auto: { bpm: 124, key: '', genre: '', limit: 10 },
         get apiBase() { const configured = window.__DJ_LIBRARY_CONFIG__?.API_BASE_URL || ''; return configured && configured.replace(/\/$/, '') !== window.location.origin ? configured.replace(/\/$/, '') : ''; },
         get m3uUrl() { const params = new URLSearchParams(this.auto); return this.apiBase + '/api/v1/autodj/playlist.m3u8?' + params; },
-        async load() {
+        async load(resetPage = false) {
           this.loading = true; this.error = '';
           try {
+            if (resetPage) this.filters.page = 1;
             const query = new URLSearchParams(this.filters);
             for (const [key, value] of query) if (!value) query.delete(key);
             const response = await fetch(this.apiBase + '/api/v1/tracks?' + query);
