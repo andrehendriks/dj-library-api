@@ -37,7 +37,7 @@ curl "http://localhost:3000/api/v1/autodj/playlist?bpm=124&key=F%23%20min&genre=
 curl -OJ "http://localhost:3000/api/v1/autodj/playlist.m3u8?bpm=124&genre=House&limit=20"
 ```
 
-The M3U8 endpoint only emits file paths beginning with `MUSIC_PATH_PREFIX` (default `/music/`) and rejects traversal, backslashes and null bytes. It never reads or exposes arbitrary filesystem paths.
+The JSON playlist uses container paths such as `/music/...`. The downloadable M3U8 uses `MIXXX_MUSIC_PATH` (default `//stream-vught-nl/Dj/Music/`) so Mixxx on the Windows host can resolve the files directly. Set it to the exact path Mixxx sees, for example `Z:/Music/` or `//nas/Dj/Music/`; the value is only a path prefix and traversal is rejected.
 
 ## Music scanning, metadata and duplicates
 

@@ -59,6 +59,23 @@ export function toM3u8(tracks: Track[], prefix = "/music/"): string {
   return `#EXTM3U\n${entries.length > 0 ? `${entries.join("\n")}\n` : ""}`;
 }
 
+export function toMixxxPath(filePath: string | null, containerPrefix: string, mixxxPrefix: string): string | null {
+  if (!isSafeMusicPath(filePath, containerPrefix)) return null;
+  const normalizedPrefix = mixxxPrefix.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (!normalizedPrefix || normalizedPrefix.includes("\0") || normalizedPrefix.split("/").some((part) => part === "..")) return null;
+  return `${normalizedPrefix}/${filePath.slice(containerPrefix.length)}`;
+}
+
+export function toMixxxM3u8(tracks: Track[], containerPrefix = "/music/", mixxxPrefix = "//stream-vught-nl/Dj/Music/"): string {
+  const entries = tracks
+    .map((track) => {
+      const mixxxPath = toMixxxPath(track.filePath, containerPrefix, mixxxPrefix);
+      return mixxxPath ? `#EXTINF:${track.durationSeconds ?? -1},${track.artist} - ${track.title}\n${mixxxPath}` : null;
+    })
+    .filter((entry): entry is string => entry !== null);
+  return `#EXTM3U\n${entries.length > 0 ? `${entries.join("\n")}\n` : ""}`;
+}
+
 export function toAutoDjResponse(tracks: Track[]) {
   return { data: tracks.map(toTrackResponse), count: tracks.length };
 }

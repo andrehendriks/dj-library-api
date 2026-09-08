@@ -73,7 +73,7 @@ describe("tracks API", () => {
     expect(json.json().data[0].title).toBe("Closest");
     const m3u = await app.inject({ method: "GET", url: "/api/v1/autodj/playlist.m3u8?bpm=124&limit=2" });
     expect(m3u.statusCode).toBe(200);
-    expect(m3u.body).toContain("/music/closest.mp3");
+    expect(m3u.body).toContain("//stream-vught-nl/Dj/Music/closest.mp3");
     expect(m3u.body).not.toContain("secret.mp3");
   });
 });

@@ -7,7 +7,7 @@ import { PrismaClient, type Prisma } from "@prisma/client";
 import path from "node:path";
 import { ZodError } from "zod";
 
-import { autoDjQuerySchema, isSafeMusicPath, selectAutoDjTracks, toAutoDjResponse, toM3u8 } from "./autodj.js";
+import { autoDjQuerySchema, isSafeMusicPath, selectAutoDjTracks, toAutoDjResponse, toMixxxM3u8 } from "./autodj.js";
 import { findDuplicateGroups, getMusicConfig, getScanStatus, scanMusic } from "./music-scanner.js";
 import { getPlaylistConfig, getPlaylistImportStatus, importPlaylists } from "./playlist-importer.js";
 import { trackCreateSchema, trackQuerySchema, trackUpdateSchema } from "./track-schema.js";
@@ -161,10 +161,11 @@ export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInst
   }, async (request, reply) => {
     const prefix = process.env.MUSIC_PATH_PREFIX ?? "/music/";
     const playlist = (await autoDjHandler(request)).filter((track) => isSafeMusicPath(track.filePath, prefix));
+    const mixxxPrefix = process.env.MIXXX_MUSIC_PATH ?? "//stream-vught-nl/Dj/Music/";
     return reply
       .type("audio/x-mpegurl")
       .header("Content-Disposition", 'attachment; filename="autodj.m3u8"')
-      .send(toM3u8(playlist, prefix));
+      .send(toMixxxM3u8(playlist, prefix, mixxxPrefix));
   });
 
   app.get("/api/v1/tracks", {
