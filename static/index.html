@@ -53,8 +53,32 @@
         auto: { bpm: 124, key: '', genre: '', limit: 10 },
         get apiBase() { const configured = window.__DJ_LIBRARY_CONFIG__?.API_BASE_URL || ''; return configured && configured.replace(/\/$/, '') !== window.location.origin ? configured.replace(/\/$/, '') : ''; },
         get m3uUrl() { const params = new URLSearchParams(this.auto); return this.apiBase + '/api/v1/autodj/playlist.m3u8?' + params; },
-        async load() { this.loading = true; this.error = ''; try { const query = new URLSearchParams(this.filters); for (const [key, value] of query) if (!value) query.delete(key); const response = await fetch(this.apiBase + '/api/v1/tracks?' + query); if (!response.ok) throw new Error('Could not load tracks'); const body = await response.json(); this.tracks = body.data; this.total = body.pagination.total; } catch (error) { this.error = error.message; } finally { this.loading = false; } },
-        async generate() { const query = new URLSearchParams(this.auto); for (const [key, value] of query) if (!value) query.delete(key); const response = await fetch(this.apiBase + '/api/v1/autodj/playlist?' + query); const body = await response.json(); this.playlist = body.data || []; }
+        async load() {
+          this.loading = true; this.error = '';
+          try {
+            const query = new URLSearchParams(this.filters);
+            for (const [key, value] of query) if (!value) query.delete(key);
+            const response = await fetch(this.apiBase + '/api/v1/tracks?' + query);
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(body.error?.message || 'Could not load tracks');
+            this.tracks = Array.isArray(body.data) ? body.data : [];
+            this.total = Number.isFinite(body.pagination?.total) ? body.pagination.total : this.tracks.length;
+            if (!Array.isArray(body.data) || !body.pagination) this.error = 'The API returned an unexpected track-list response.';
+          } catch (error) {
+            this.tracks = []; this.total = 0; this.error = error instanceof Error ? error.message : 'Could not load tracks';
+          } finally { this.loading = false; }
+        },
+        async generate() {
+          const query = new URLSearchParams(this.auto);
+          for (const [key, value] of query) if (!value) query.delete(key);
+          try {
+            const response = await fetch(this.apiBase + '/api/v1/autodj/playlist?' + query);
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(body.error?.message || 'Could not generate playlist');
+            this.playlist = Array.isArray(body.data) ? body.data : [];
+            if (!Array.isArray(body.data)) this.error = 'The API returned an unexpected playlist response.';
+          } catch (error) { this.playlist = []; this.error = error instanceof Error ? error.message : 'Could not generate playlist'; }
+        }
       };
     }
   </script>
