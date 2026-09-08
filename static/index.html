@@ -59,14 +59,23 @@
             const query = new URLSearchParams(this.filters);
             for (const [key, value] of query) if (!value) query.delete(key);
             const response = await fetch(this.apiBase + '/api/v1/tracks?' + query);
-            const body = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(body.error?.message || 'Could not load tracks');
-            const tracks = Array.isArray(body) ? body : body.data ?? body.tracks;
+            const body = await response.json().catch(() => null);
+            if (!response.ok) {
+              const message = body?.error?.message || body?.message || `Track request failed (HTTP ${response.status})`;
+              throw new Error(message);
+            }
+            const tracks = Array.isArray(body)
+              ? body
+              : Array.isArray(body?.data) ? body.data
+              : Array.isArray(body?.tracks) ? body.tracks
+              : Array.isArray(body?.results) ? body.results
+              : Array.isArray(body?.data?.tracks) ? body.data.tracks
+              : null;
             if (!Array.isArray(tracks)) throw new Error('The API returned an unexpected track-list response.');
             this.tracks = tracks;
-            this.total = Number.isFinite(body.pagination?.total)
+            this.total = Number.isFinite(body?.pagination?.total)
               ? body.pagination.total
-              : Number.isFinite(body.total) ? body.total : tracks.length;
+              : Number.isFinite(body?.total) ? body.total : tracks.length;
           } catch (error) {
             this.tracks = []; this.total = 0; this.error = error instanceof Error ? error.message : 'Could not load tracks';
           } finally { this.loading = false; }
