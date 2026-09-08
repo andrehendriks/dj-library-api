@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: .
+      # Synology ARM64 models should use this explicitly. ARMv7 is not
+      # supported by Prisma's SQLite native query engine.
+      platforms:
+        - linux/arm64
+    image: dj-library-api:latest
+    platform: linux/arm64
+    ports:
+      - "${HOST_PORT:-8080}:3000"
+    environment:
+      DATABASE_URL: "file:/app/data/dev.db"
+      MUSIC_ROOT: "/music"
+      MUSIC_PATH: "/music/"
+      PLAYLIST_ROOT: "/playlists"
+      PLAYLIST_SOURCE_PREFIX: "${PLAYLIST_SOURCE_PREFIX:-//stream-vught-nl/Dj/Music/}"
+      API_BASE_URL: "${API_BASE_URL:-http://192.168.2.5:8080}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://192.168.2.5:8080}"
+      MUSIC_PATH_PREFIX: "/music/"
+      HOST: "0.0.0.0"
+      PORT: "3000"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      SEED_DATABASE: "${SEED_DATABASE:-false}"
+    volumes:
+      - dj_library_data:/app/data
+      # Mount the NAS music share read-only. Store filePath values as /music/...
+      - ${MUSIC_DIR:-./music}:/music:ro
+      - ${PLAYLIST_DIR:-./playlists}:/playlists:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  dj_library_data:

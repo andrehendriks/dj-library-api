@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Track {
+  id              String   @id @default(cuid())
+  title           String
+  artist          String
+  album           String?
+  genre           String?
+  bpm             Float?
+  key             String?
+  durationSeconds Int?
+  rating          Int?
+  tags            String   @default("[]")
+  filePath        String?
+  fileHash        String?
+  metadataSource  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([title])
+  @@index([artist])
+  @@index([genre])
+  @@index([createdAt])
+  @@index([fileHash])
+}
+
+model PlaylistEntry {
+  id            String   @id @default(cuid())
+  category      String
+  sourceFile    String
+  sourcePath    String
+  mixxxPath     String
+  title         String?
+  artist        String?
+  duration      Int?
+  importedAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([category, mixxxPath])
+  @@index([category])
+  @@index([mixxxPath])
+}

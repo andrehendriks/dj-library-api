@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DJ Library</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script defer src="/static/alpine.min.js"></script>
+  <script src="/config.js"></script>
+</head>
+<body>
+  <main x-data="library()" x-init="load()">
+    <header class="hero">
+      <div class="logo" aria-label="DJ Library logo">DJ</div>
+      <div><p class="eyebrow">LOCAL MUSIC LIBRARY</p><h1>DJ Library</h1><p class="muted">Browse your collection and generate a predictable AutoDJ playlist.</p></div>
+    </header>
+    <section class="panel controls">
+      <label>Search <input x-model="filters.search" @input.debounce.300ms="load()" placeholder="Title, artist or genre"></label>
+      <label>Genre <input x-model="filters.genre" @input.debounce.300ms="load()" placeholder="House"></label>
+      <label>Page size <input type="number" min="1" max="100" x-model.number="filters.pageSize" @change="load()"></label>
+    </section>
+    <section class="layout">
+      <div class="panel">
+        <div class="section-heading"><h2>Tracks</h2><span x-text="total + ' tracks'"></span></div>
+        <p class="error" x-show="error" x-text="error"></p>
+        <div class="track-list">
+          <template x-for="track in tracks" :key="track.id">
+            <article class="track">
+              <div><strong x-text="track.title"></strong><span class="muted" x-text="track.artist + (track.genre ? ' · ' + track.genre : '')"></span></div>
+              <span class="pill" x-text="track.bpm ? track.bpm + ' BPM' : '— BPM'"></span>
+            </article>
+          </template>
+          <p class="muted" x-show="!loading && tracks.length === 0">No tracks found.</p>
+        </div>
+      </div>
+      <form class="panel autodj" @submit.prevent="generate()">
+        <h2>AutoDJ</h2>
+        <p class="muted">Choose a target; closest BPM, key and genre are selected deterministically.</p>
+        <label>BPM <input type="number" min="1" max="400" x-model.number="auto.bpm"></label>
+        <label>Key <input x-model="auto.key" placeholder="F# min"></label>
+        <label>Genre <input x-model="auto.genre" placeholder="House"></label>
+        <label>Tracks <input type="number" min="1" max="200" x-model.number="auto.limit"></label>
+        <button type="submit">Generate playlist</button>
+        <a class="download" x-show="playlist.length" :href="m3uUrl" download="autodj.m3u8">Download M3U8</a>
+        <ol><template x-for="track in playlist" :key="track.id"><li x-text="track.artist + ' — ' + track.title"></li></template></ol>
+      </form>
+    </section>
+  </main>
+  <script>
+    function library() {
+      return {
+        tracks: [], playlist: [], total: 0, loading: false, error: '', filters: { page: 1, pageSize: 20, search: '', genre: '' },
+        auto: { bpm: 124, key: '', genre: '', limit: 10 },
+        get apiBase() { const configured = window.__DJ_LIBRARY_CONFIG__?.API_BASE_URL || ''; return configured && configured.replace(/\/$/, '') !== window.location.origin ? configured.replace(/\/$/, '') : ''; },
+        get m3uUrl() { const params = new URLSearchParams(this.auto); return this.apiBase + '/api/v1/autodj/playlist.m3u8?' + params; },
+        async load() { this.loading = true; this.error = ''; try { const query = new URLSearchParams(this.filters); for (const [key, value] of query) if (!value) query.delete(key); const response = await fetch(this.apiBase + '/api/v1/tracks?' + query); if (!response.ok) throw new Error('Could not load tracks'); const body = await response.json(); this.tracks = body.data; this.total = body.pagination.total; } catch (error) { this.error = error.message; } finally { this.loading = false; } },
+        async generate() { const query = new URLSearchParams(this.auto); for (const [key, value] of query) if (!value) query.delete(key); const response = await fetch(this.apiBase + '/api/v1/autodj/playlist?' + query); const body = await response.json(); this.playlist = body.data || []; }
+      };
+    }
+  </script>
+</body>
+</html>
