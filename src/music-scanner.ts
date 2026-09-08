@@ -31,10 +31,11 @@ const status: ScanStatus = {
 
 export function getMusicConfig(): MusicConfig {
   const root = path.resolve(process.env.MUSIC_ROOT ?? "/music");
-  const publicPath = process.env.MUSIC_PATH ?? process.env.MUSIC_PATH_PREFIX ?? "/music/";
-  if (!publicPath.startsWith("/") || !publicPath.endsWith("/")) {
-    throw new Error("MUSIC_PATH must be an absolute URL path ending with /");
+  const configuredPath = (process.env.MUSIC_PATH ?? process.env.MUSIC_PATH_PREFIX ?? "/music/").trim().replace(/\\/g, "/");
+  if (!configuredPath.startsWith("/") || configuredPath.includes("\0") || configuredPath.split("/").some((segment) => segment === "..")) {
+    throw new Error("MUSIC_PATH must be a safe absolute URL path");
   }
+  const publicPath = `/${configuredPath.replace(/^\/+|\/+$/g, "")}/`;
   return { root, publicPath };
 }
 
