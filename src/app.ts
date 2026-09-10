@@ -68,16 +68,29 @@ export async function buildApp(prisma = new PrismaClient()): Promise<FastifyInst
   await app.register(fastifyStatic, {
     root: path.resolve(process.cwd(), "static"),
     prefix: "/static/",
-    decorateReply: false
+    decorateReply: false,
+    // Static assets have no cache-busting (no fingerprinted filenames), so an
+    // aggressively cached bundle can silently keep serving a stale frontend
+    // build after a deploy. Disable caching to guarantee the browser always
+    // re-validates against the current image.
+    setHeaders: (res) => {
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    }
   });
   app.get("/config.js", async (_request, reply) => {
     const apiBaseUrl = process.env.API_BASE_URL ?? "http://192.168.2.5:8080";
-    return reply.type("application/javascript").send(`window.__DJ_LIBRARY_CONFIG__=${JSON.stringify({ API_BASE_URL: apiBaseUrl })};`);
+    return reply
+      .type("application/javascript")
+      .header("Cache-Control", "no-cache, must-revalidate")
+      .send(`window.__DJ_LIBRARY_CONFIG__=${JSON.stringify({ API_BASE_URL: apiBaseUrl })};`);
   });
   await app.register(fastifyStatic, {
     root: path.resolve(process.cwd(), "static"),
     index: "index.html",
-    decorateReply: false
+    decorateReply: false,
+    setHeaders: (res) => {
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    }
   });
 
   app.addHook("onClose", async () => {
