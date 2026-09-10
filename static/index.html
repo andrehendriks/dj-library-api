@@ -41,7 +41,7 @@
         <label>Genre <input x-model="auto.genre" placeholder="House"></label>
         <label>Tracks <input type="number" min="1" max="200" x-model.number="auto.limit"></label>
         <button type="submit">Generate playlist</button>
-        <a class="download" x-show="playlist.length" :href="m3uUrl" download="autodj.m3u8">Download M3U8</a>
+        <button type="button" class="download" x-show="playlist.length" x-text="downloading ? 'Downloading…' : 'Download M3U8'" :disabled="downloading" @click="downloadM3u8()"></button>
         <ol><template x-for="track in playlist" :key="track.id"><li x-text="track.artist + ' — ' + track.title"></li></template></ol>
       </form>
     </section>
@@ -49,7 +49,7 @@
   <script>
     function library() {
       return {
-        tracks: [], playlist: [], total: 0, loading: false, error: '', filters: { page: 1, pageSize: 20, search: '', genre: '' },
+        tracks: [], playlist: [], total: 0, loading: false, downloading: false, error: '', filters: { page: 1, pageSize: 20, search: '', genre: '' },
         auto: { bpm: 124, key: '', genre: '', limit: 10 },
         get apiBase() { const configured = window.__DJ_LIBRARY_CONFIG__?.API_BASE_URL || ''; return configured && configured.replace(/\/$/, '') !== window.location.origin ? configured.replace(/\/$/, '') : ''; },
         // Builds a query string that omits empty/undefined/NaN values, so optional
@@ -67,6 +67,32 @@
           return query;
         },
         get m3uUrl() { return this.apiBase + '/api/v1/autodj/playlist.m3u8?' + this.buildQuery(this.auto); },
+        // Fetches the M3U8 as a Blob and triggers the download via a same-origin
+        // blob: URL. A plain <a download href="cross-origin-url"> is ignored by
+        // browsers (the download attribute only applies to same-origin URLs), so
+        // when API_BASE_URL points elsewhere the browser would navigate to the
+        // file instead of downloading it — which looks like a blocked download.
+        async downloadM3u8() {
+          this.downloading = true; this.error = '';
+          try {
+            const response = await fetch(this.m3uUrl);
+            if (!response.ok) {
+              const body = await response.json().catch(() => null);
+              throw new Error(body?.error?.message || body?.message || `Playlist download failed (HTTP ${response.status})`);
+            }
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = 'autodj.m3u8';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+          } catch (error) {
+            this.error = error instanceof Error ? error.message : 'Could not download playlist';
+          } finally { this.downloading = false; }
+        },
         async load(resetPage = false) {
           this.loading = true; this.error = '';
           try {
