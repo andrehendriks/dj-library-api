@@ -52,13 +52,26 @@
         tracks: [], playlist: [], total: 0, loading: false, error: '', filters: { page: 1, pageSize: 20, search: '', genre: '' },
         auto: { bpm: 124, key: '', genre: '', limit: 10 },
         get apiBase() { const configured = window.__DJ_LIBRARY_CONFIG__?.API_BASE_URL || ''; return configured && configured.replace(/\/$/, '') !== window.location.origin ? configured.replace(/\/$/, '') : ''; },
-        get m3uUrl() { const params = new URLSearchParams(this.auto); return this.apiBase + '/api/v1/autodj/playlist.m3u8?' + params; },
+        // Builds a query string that omits empty/undefined/NaN values, so optional
+        // fields (e.g. key, genre) are sent as *absent* instead of an empty string.
+        // Sending "key=" would fail backend validation, which allows a missing key
+        // but rejects an explicit empty one.
+        buildQuery(params) {
+          const query = new URLSearchParams();
+          for (const [key, value] of Object.entries(params)) {
+            if (value === null || value === undefined) continue;
+            if (typeof value === 'number' && Number.isNaN(value)) continue;
+            if (value === '') continue;
+            query.set(key, value);
+          }
+          return query;
+        },
+        get m3uUrl() { return this.apiBase + '/api/v1/autodj/playlist.m3u8?' + this.buildQuery(this.auto); },
         async load(resetPage = false) {
           this.loading = true; this.error = '';
           try {
             if (resetPage) this.filters.page = 1;
-            const query = new URLSearchParams(this.filters);
-            for (const [key, value] of query) if (!value) query.delete(key);
+            const query = this.buildQuery(this.filters);
             const response = await fetch(this.apiBase + '/api/v1/tracks?' + query);
             const body = await response.json().catch(() => null);
             if (!response.ok) {
@@ -83,8 +96,7 @@
           } finally { this.loading = false; }
         },
         async generate() {
-          const query = new URLSearchParams(this.auto);
-          for (const [key, value] of query) if (!value) query.delete(key);
+          const query = this.buildQuery(this.auto);
           try {
             const response = await fetch(this.apiBase + '/api/v1/autodj/playlist?' + query);
             const body = await response.json().catch(() => ({}));
