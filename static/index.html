@@ -49,7 +49,7 @@
   <script>
     function library() {
       return {
-        tracks: [], playlist: [], total: 0, loading: false, downloading: false, error: '', filters: { page: 1, pageSize: 20, search: '', genre: '' },
+        tracks: [], playlist: [], total: 0, loading: false, downloading: false, error: '', filters: { page: 1, pageSize: 20, search: '', genre: '' }, loadRequestId: 0,
         auto: { bpm: 124, key: '', genre: '', limit: 10 },
         get apiBase() { const configured = window.__DJ_LIBRARY_CONFIG__?.API_BASE_URL || ''; return configured && configured.replace(/\/$/, '') !== window.location.origin ? configured.replace(/\/$/, '') : ''; },
         // Builds a query string that omits empty/undefined/NaN values, so optional
@@ -95,11 +95,18 @@
         },
         async load(resetPage = false) {
           this.loading = true; this.error = '';
+          // Guard against out-of-order responses: if the user types quickly (or
+          // the initial unfiltered load is slow on a NAS/network), an older
+          // request can resolve *after* a newer, more specific one and silently
+          // overwrite the correctly filtered list with a broader/unfiltered
+          // result. Only the response matching the latest request is applied.
+          const requestId = ++this.loadRequestId;
           try {
             if (resetPage) this.filters.page = 1;
             const query = this.buildQuery(this.filters);
             const response = await fetch(this.apiBase + '/api/v1/tracks?' + query);
             const body = await response.json().catch(() => null);
+            if (requestId !== this.loadRequestId) return;
             if (!response.ok) {
               const details = Array.isArray(body?.error?.details) ? `: ${body.error.details.map(detail => detail.message).join(', ')}` : '';
               const message = (body?.error?.message || body?.message || `Track request failed (HTTP ${response.status})`) + details;
@@ -118,8 +125,11 @@
               ? body.pagination.total
               : Number.isFinite(body?.total) ? body.total : tracks.length;
           } catch (error) {
+            if (requestId !== this.loadRequestId) return;
             this.tracks = []; this.total = 0; this.error = error instanceof Error ? error.message : 'Could not load tracks';
-          } finally { this.loading = false; }
+          } finally {
+            if (requestId === this.loadRequestId) this.loading = false;
+          }
         },
         async generate() {
           const query = this.buildQuery(this.auto);
